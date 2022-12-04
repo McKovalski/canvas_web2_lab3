@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Canvas Shooter Game</title>
+        <style>
+            canvas {
+                border:1px solid #000000;
+                background-color: whitesmoke;
+            }
+            button {
+                background-color: #0033cc;
+                border: none;
+                color: white;
+                padding: 12px 12px;
+                text-align: center;
+                text-decoration: none;
+                display: inline-block;
+                font-size: 16px;
+                border-radius: 4px;
+            }
+            button:hover {background-color: #002080}
+        </style>            
+    </head>
+    <body onload="startGame()">
+        <br>
+        <br>
+        <div><button id="reset_button" style="display: none;" onclick="resetGame()">Start again</button></div>
+    </body>
+    <script>
+        var components = [];
+        var numberOfComponents = 0;
+        let colors = ["red", "blue", "green", "gold", "orange", "purple", "hotpink", "cyan", "darkred", "navy"]
+        let max_speed = 3.5;
+        let min_speed = 0.75;
+        let canvas_width = 720;
+        let canvas_height = 450;
+
+        function startGame() {
+            numberOfComponents = Math.round(getRandomNumber(3, 10));
+            for (let i = 0; i < numberOfComponents; i++) {
+                components[i] = new component(i, 32, 32, colors[i], getRandomNumber(0, canvas_width), getRandomNumber(0, canvas_height));
+            }
+            gameArea.start();
+        }
+
+        var gameArea = {
+            canvas: document.createElement("canvas"),
+            start: function() {
+                this.canvas.id = "canvas";
+                this.canvas.width = canvas_width;
+                this.canvas.height = canvas_height;
+                this.context = this.canvas.getContext("2d");
+                document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+                this.frameNo = 0;
+                this.interval = setInterval(updateGameArea, 10);
+                let offsetLeft = this.canvas.offsetLeft;
+                let offsetTop = this.canvas.offsetTop;
+                this.canvas.addEventListener('click', function(event) {
+                    let eventX = event.pageX - offsetLeft;
+                    let eventY = event.pageY - offsetTop;
+                    for (let i = 0; i < components.length; i++) {
+                        let c = components[i];
+                        if (eventX >= c.x - c.width/2 && eventX <= c.x + c.width/2
+                            && eventY >= c.y - c.height/2 && eventY <= c.y + c.height/2) {
+                                c.onClick();
+                        }
+                    }
+                });
+            },
+            stop: function() {
+                clearInterval(this.interval);
+            },
+            clear: function() {
+                this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            },
+            newGame: function() {
+                this.context.textAlign = "center";
+                this.context.font = "28px Roboto";
+                this.context.fillText("Well played!", canvas_width / 2, canvas_height / 2);
+                clearInterval(this.interval);
+                document.getElementById("reset_button").style.display = "block";
+            }
+        }
+
+        function component(id, width, height, color, x, y) {
+            this.id = id;
+            this.width = width;
+            this.height = height;
+            this.speed_x = getRandomNumber(min_speed, max_speed) * randomPlusOrMinus();
+            this.speed_y = getRandomNumber(min_speed, max_speed) * randomPlusOrMinus();
+            this.x = x;
+            this.y = y;
+            this.update = function() {
+                ctx = gameArea.context;
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.fillStyle = color;
+                ctx.fillRect(this.width / -2, this.height / -2, this.width, this.height);
+                ctx.restore();
+            }
+            this.newPosition = function() {
+                var coeficient = getRandomNumber(0.3, 2);
+                if (this.x - this.width / 2 < 0) {
+                    this.speed_x = Math.abs(this.speed_x) * coeficient;
+                } else if ((this.x + this.width / 2) >= gameArea.context.canvas.width) {
+                    this.speed_x = -Math.abs(this.speed_x) * coeficient;
+                }
+
+                if (this.y - this.height / 2 < 0) {
+                    this.speed_y = -Math.abs(this.speed_y) * coeficient;
+                } else if ((this.y + this.height / 2) >= gameArea.context.canvas.height) {
+                    this.speed_y = Math.abs(this.speed_y) * coeficient;
+                }
+
+                if (Math.abs(this.speed_x) < min_speed) { if (this.speed_x > 0) this.speed_x = min_speed; else this.speed_x = -min_speed; }
+                if (Math.abs(this.speed_x) > max_speed) { if (this.speed_x > 0) this.speed_x = max_speed; else this.speed_x = -max_speed; }
+                if (Math.abs(this.speed_y) < min_speed) { if (this.speed_y > 0) this.speed_y = min_speed; else this.speed_y = -min_speed; }
+                if (Math.abs(this.speed_y) > max_speed) { if (this.speed_y > 0) this.speed_y = max_speed; else this.speed_y = -max_speed; }
+                
+                this.x += this.speed_x;
+                this.y -= this.speed_y;
+            }
+            this.onClick = function() {
+                console.log(this.id);
+                for (let i = 0; i < components.length; i++) {
+                    if (components[i].id == this.id) {
+                        components.splice(i, 1);
+                    }
+                }
+            }
+        }
+
+        function updateGameArea() {
+            gameArea.clear();
+            for (let i = 0; i < components.length; i++) {
+                components[i].newPosition();
+                components[i].update();
+            }
+            ctx.textAlign = "end";
+            ctx.font = "20px Roboto";
+            ctx.fillText("Targets: " + numberOfComponents, gameArea.canvas.width, 20);
+            ctx.fillText("Hits: " + (numberOfComponents - components.length), gameArea.canvas.width, 50);
+
+            if (components.length == 0) {
+                gameArea.newGame();
+            }
+        }
+
+        function resetGame() {
+            document.getElementById("reset_button").style.display = "none";
+            gameArea.clear();
+            startGame();
+        }
+
+        function getRandomNumber(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        function randomPlusOrMinus() {
+            return Math.round(Math.random()) * 2 - 1;
+        }
+    </script>
+</html>
